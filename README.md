@@ -4,7 +4,13 @@ A minimal New Tab page for Helium (or any Chromium-based browser) that follows y
 
 Curated shortcuts only — no auto-tracked "most visited," no third-party favicon service. You add what you want, and each tile fetches a high-res icon straight from the site itself (or from a hand-picked local override for a couple of sites where that didn't look right).
 
-![screenshot placeholder](#)
+Same setup, three different wallpapers — the whole page (and the browser's own accent) follows along automatically:
+
+<p>
+  <img src="screenshots/blue.png" width="32%" alt="Blue palette">
+  <img src="screenshots/amber.png" width="32%" alt="Amber palette">
+  <img src="screenshots/green.png" width="32%" alt="Green palette">
+</p>
 
 ## What's in here
 
