@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>New Tab</title>
+<link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <main>
+    <div class="hero">
+      <div class="clock-block">
+        <div class="clock-digital">
+          <span class="h" id="clockH">00</span><span class="sep">:</span><span class="ms" id="clockM">00</span><span class="sep">:</span><span class="ms" id="clockS">00</span>
+        </div>
+        <div class="clock-date" id="clockDate"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="dock" id="dock"></div>
+
+  <div class="add-panel" id="addPanel" hidden>
+    <div class="add-card">
+      <input id="addName" type="text" placeholder="Name" autocomplete="off" maxlength="24">
+      <input id="addUrl" type="text" placeholder="URL" autocomplete="off">
+      <div class="add-actions">
+        <button id="addCancel">Cancel</button>
+        <button id="addSave">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>

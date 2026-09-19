@@ -1,0 +1,9 @@
+/* Add these to your matugen GTK color template (alongside accent_color etc).
+ * Newer libadwaita apps read accent_color/accent_bg_color, but some native-GTK
+ * UI -- including Helium's text-field and omnibox selection highlight when
+ * "follows system colors" is on -- looks up these older GTK3 symbolic names
+ * directly, and falls back to a default blue if they're unset. */
+@define-color theme_selected_bg_color {{colors.primary.default.hex}};
+@define-color theme_selected_fg_color {{colors.on_primary.default.hex}};
+@define-color selected_bg_color {{colors.primary.default.hex}};
+@define-color selected_fg_color {{colors.on_primary.default.hex}};

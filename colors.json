@@ -1,0 +1,10 @@
+{
+  "background": "#0a1611",
+  "surface": "#0a1611",
+  "surface_variant": "#3d4943",
+  "on_surface": "#d8e6dd",
+  "on_surface_variant": "#bccac1",
+  "outline_variant": "#3d4943",
+  "primary": "#00e1a9",
+  "on_primary": "#003828"
+}
