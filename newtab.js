@@ -49,14 +49,65 @@ function iconCandidates(pageUrl) {
   ];
 }
 
-function loadBestIcon(img, letter, candidates, i = 0) {
-  if (i >= candidates.length) {
+// Many sites send no-cache/short-lived headers on favicons, so leaving this
+// to the browser's own HTTP cache means a fresh network fetch (and a visible
+// icon pop-in) on every single new tab. Resolve the icon once, store it as a
+// data URL in extension storage, and skip the network entirely after that.
+const ICON_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 days
+
+async function getIconCache() {
+  const { iconCache } = await chrome.storage.local.get('iconCache');
+  return iconCache || {};
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function resolveIconDataUrl(candidates) {
+  for (const url of candidates) {
+    if (url.startsWith('chrome-extension://')) return url; // bundled asset, not fetched
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (!blob.size) continue;
+      return await blobToDataUrl(blob);
+    } catch (e) {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function loadBestIcon(img, letter, pageUrl) {
+  const host = new URL(pageUrl).hostname;
+  const cache = await getIconCache();
+  const cached = cache[host];
+
+  if (cached && Date.now() - cached.ts < ICON_CACHE_TTL) {
+    img.onerror = () => img.remove();
+    img.onload = () => letter.remove();
+    img.src = cached.dataUrl;
+    return;
+  }
+
+  const dataUrl = await resolveIconDataUrl(iconCandidates(pageUrl));
+  if (!dataUrl) {
     img.remove();
     return;
   }
-  img.onerror = () => loadBestIcon(img, letter, candidates, i + 1);
+  img.onerror = () => img.remove();
   img.onload = () => letter.remove();
-  img.src = candidates[i];
+  img.src = dataUrl;
+
+  cache[host] = { dataUrl, ts: Date.now() };
+  await chrome.storage.local.set({ iconCache: cache });
 }
 
 function hexToRgb(hex) {
@@ -140,7 +191,7 @@ function makeDockItem(link, index) {
   const icon = document.createElement('img');
   icon.alt = '';
   a.appendChild(icon);
-  loadBestIcon(icon, letter, iconCandidates(link.url));
+  loadBestIcon(icon, letter, link.url);
 
   const remove = document.createElement('button');
   remove.className = 'remove';
