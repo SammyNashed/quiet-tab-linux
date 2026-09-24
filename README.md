@@ -7,7 +7,7 @@ A minimal, curated New Tab page that **takes its colours from your wallpaper, or
 Chromium browser on Linux: Helium, Chrome, Chromium, Brave, Vivaldi, Edge and others. It's the Linux version of
 [Quiet Tab for Windows](https://github.com/SammyNashed/quiet-tab-windows).
 
-<img src="screenshots/hero.png" alt="Quiet Tab following an orange nebula wallpaper">
+<img src="screenshots/hero.png" alt="Quiet Tab using the colours matugen made from the Carina Nebula">
 
 - **Matches your desktop exactly.** With matugen, the page uses the very colours matugen generated for your bar,
   terminal and everything else — same scheme, same style. Change the wallpaper and every open New Tab recolours
@@ -32,11 +32,11 @@ Chromium browser on Linux: Helium, Chrome, Chromium, Brave, Vivaldi, Edge and ot
 | | |
 |---|---|
 | <img src="screenshots/orange-tonal-spot.png" alt="Orange nebula, Tonal spot"> | <img src="screenshots/blue-fidelity.png" alt="Blue nebula, Fidelity"> |
-| Carina Nebula · *Tonal spot* · iOS 26 dark icons | Pillars of Creation · *Fidelity* · Themed icons |
+| Carina Nebula · *Tonal spot* · iOS 26 dark icons | Pillars of Creation, blue swatch picked · *Fidelity* · Themed icons |
 | <img src="screenshots/green-vibrant-light.png" alt="Green aurora, Vibrant, light mode"> | <img src="screenshots/red-content.png" alt="Red aurora, Content"> |
-| Aurora from orbit, second swatch picked · *Vibrant*, light · Logo only | Red aurora · *Content* · Accent icons |
+| Aurora from orbit, second swatch picked · *Vibrant*, light · Logo only | Aurora over Kennedy Space Center · *Content* · Accent icons |
 | <img src="screenshots/image-expressive.png" alt="Uploaded picture, Expressive"> | <img src="screenshots/custom-exact.png" alt="Custom colour, Exact"> |
-| An uploaded picture (Crab Nebula) · *Expressive* · Monochrome icons | Custom colour · *Exact colour* · Brand colour icons |
+| An uploaded picture (Crab Nebula) · *Expressive* · Monochrome icons | Custom colour (#ff00f2) · *Exact colour* · Brand colour icons |
 
 ## Shortcut icons
 
@@ -99,7 +99,9 @@ The extension's ID comes from the folder's path. If you move the folder, load it
 
 - Colour science: Google's [material-color-utilities](https://github.com/material-foundation/material-color-utilities)
   (Apache 2.0), bundled as `vendor/mcu.js`.
-- Screenshot wallpapers: public-domain images from the [NASA Image and Video Library](https://images.nasa.gov).
+- Screenshot wallpapers: public-domain images from the [NASA Image and Video Library](https://images.nasa.gov)
+  (`carina_nebula`, `GSFC_20171208_Archive_e000842`, `iss023e058455`, `KSC-20251111-PH-JBS01_0011`, `PIA03606`).
+  Every screenshot is taken from this Linux build, with the wallpaper fed through the real helper and matugen.
 - Shortcut icons: [Simple Icons](https://github.com/simple-icons/simple-icons) (CC0), bundled as
   `icons/library.json`. The logos are trademarks of their owners and are shown only to identify each site.
 - The hand-made iOS-style WhatsApp and YouTube icons in `icons/apps/` come from third-party icon packs.
