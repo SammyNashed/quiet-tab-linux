@@ -1,0 +1,15 @@
+// Shared by the service worker and the New Tab page.
+
+export const DEFAULT_SETTINGS = {
+  source: 'matugen',     // 'matugen' | 'wallpaper' | 'custom' | 'image'
+  custom: '#ff00f2',
+  pick: null,            // { stamp, hex }: user's choice from the current wallpaper
+  image: null,           // data URL of an uploaded picture
+  imageSeeds: [],
+  imagePick: null,
+  style: 'vibrant',
+  mode: 'dark',          // 'dark' | 'light' | 'system'
+  iconStyle: 'ios',      // see ICON_STYLES in icons.js
+  iconStyleChosen: false, // true once the user picks one; until then new defaults apply
+};
+

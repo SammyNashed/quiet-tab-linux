@@ -1,0 +1,28 @@
+{
+  "dark": {
+    "source_color": "{{colors.source_color.dark.hex}}",
+    "background": "{{colors.background.dark.hex}}",
+    "surface": "{{colors.surface.dark.hex}}",
+    "surface_variant": "{{colors.surface_variant.dark.hex}}",
+    "on_surface": "{{colors.on_surface.dark.hex}}",
+    "on_surface_variant": "{{colors.on_surface_variant.dark.hex}}",
+    "outline_variant": "{{colors.outline_variant.dark.hex}}",
+    "primary": "{{colors.primary.dark.hex}}",
+    "on_primary": "{{colors.on_primary.dark.hex}}",
+    "secondary": "{{colors.secondary.dark.hex}}",
+    "tertiary": "{{colors.tertiary.dark.hex}}"
+  },
+  "light": {
+    "source_color": "{{colors.source_color.light.hex}}",
+    "background": "{{colors.background.light.hex}}",
+    "surface": "{{colors.surface.light.hex}}",
+    "surface_variant": "{{colors.surface_variant.light.hex}}",
+    "on_surface": "{{colors.on_surface.light.hex}}",
+    "on_surface_variant": "{{colors.on_surface_variant.light.hex}}",
+    "outline_variant": "{{colors.outline_variant.light.hex}}",
+    "primary": "{{colors.primary.light.hex}}",
+    "on_primary": "{{colors.on_primary.light.hex}}",
+    "secondary": "{{colors.secondary.light.hex}}",
+    "tertiary": "{{colors.tertiary.light.hex}}"
+  }
+}

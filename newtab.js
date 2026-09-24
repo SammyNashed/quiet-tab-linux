@@ -1,3 +1,7 @@
+import { STYLES, extractSeeds } from './palette.js';
+import { DEFAULT_SETTINGS } from './defaults.js';
+import { ICON_STYLES, loadLibrary, matchSlug, searchLibrary, drawIcon } from './icons.js';
+
 const dock = document.getElementById('dock');
 const clockH = document.getElementById('clockH');
 const clockM = document.getElementById('clockM');
@@ -6,6 +10,11 @@ const clockDate = document.getElementById('clockDate');
 const addPanel = document.getElementById('addPanel');
 const addName = document.getElementById('addName');
 const addUrl = document.getElementById('addUrl');
+const addTitle = document.getElementById('addTitle');
+const addPreview = document.getElementById('addPreview');
+const addIconLabel = document.getElementById('addIconLabel');
+const iconSearch = document.getElementById('iconSearch');
+const iconResults = document.getElementById('iconResults');
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -15,135 +24,6 @@ function ordinal(n) {
   if (n % 10 === 2 && n % 100 !== 12) return n + 'nd';
   if (n % 10 === 3 && n % 100 !== 13) return n + 'rd';
   return n + 'th';
-}
-
-// Hand-picked high-res icons for sites where the live fetch chain below
-// falls short (wrong style, or the site just doesn't serve a good one at a
-// guessable path). Add more here as needed: drop a PNG in icons/apps/ and
-// add a matching hostname keyword.
-const CURATED_ICONS = {
-  whatsapp: 'icons/apps/whatsapp.png',
-  youtube: 'icons/apps/youtube.png',
-};
-
-function curatedIcon(pageUrl) {
-  const host = new URL(pageUrl).hostname;
-  for (const [keyword, path] of Object.entries(CURATED_ICONS)) {
-    if (host.includes(keyword)) return chrome.runtime.getURL(path);
-  }
-  return null;
-}
-
-function iconCandidates(pageUrl) {
-  const curated = curatedIcon(pageUrl);
-  if (curated) return [curated];
-
-  // High-res icons straight from the site itself, no third party involved.
-  // apple-touch-icon is the closest thing to a standard "app icon" format:
-  // square, high-res, deliberately designed -- exactly the iOS look asked for.
-  const origin = new URL(pageUrl).origin;
-  return [
-    `${origin}/apple-touch-icon.png`,
-    `${origin}/apple-touch-icon-precomposed.png`,
-    `${origin}/favicon.ico`,
-  ];
-}
-
-// Many sites send no-cache/short-lived headers on favicons, so leaving this
-// to the browser's own HTTP cache means a fresh network fetch (and a visible
-// icon pop-in) on every single new tab. Resolve the icon once, store it as a
-// data URL in extension storage, and skip the network entirely after that.
-const ICON_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 days
-
-async function getIconCache() {
-  const { iconCache } = await chrome.storage.local.get('iconCache');
-  return iconCache || {};
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function resolveIconDataUrl(candidates) {
-  for (const url of candidates) {
-    if (url.startsWith('chrome-extension://')) return url; // bundled asset, not fetched
-    try {
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const blob = await res.blob();
-      if (!blob.size) continue;
-      return await blobToDataUrl(blob);
-    } catch (e) {
-      continue;
-    }
-  }
-  return null;
-}
-
-async function loadBestIcon(img, letter, pageUrl) {
-  const host = new URL(pageUrl).hostname;
-  const cache = await getIconCache();
-  const cached = cache[host];
-
-  if (cached && Date.now() - cached.ts < ICON_CACHE_TTL) {
-    img.onerror = () => img.remove();
-    img.onload = () => letter.remove();
-    img.src = cached.dataUrl;
-    return;
-  }
-
-  const dataUrl = await resolveIconDataUrl(iconCandidates(pageUrl));
-  if (!dataUrl) {
-    img.remove();
-    return;
-  }
-  img.onerror = () => img.remove();
-  img.onload = () => letter.remove();
-  img.src = dataUrl;
-
-  cache[host] = { dataUrl, ts: Date.now() };
-  await chrome.storage.local.set({ iconCache: cache });
-}
-
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
-}
-
-function chroma(hex) {
-  const [r, g, b] = hexToRgb(hex);
-  return Math.max(r, g, b) - Math.min(r, g, b);
-}
-
-async function applyColors() {
-  try {
-    const res = await fetch(chrome.runtime.getURL('colors.json') + '?t=' + Date.now());
-    const c = await res.json();
-    const root = document.documentElement.style;
-    root.setProperty('--background', c.background);
-    root.setProperty('--surface', c.surface);
-    root.setProperty('--surface-variant', c.surface_variant);
-    root.setProperty('--on-surface', c.on_surface);
-    root.setProperty('--on-surface-variant', c.on_surface_variant);
-    root.setProperty('--outline-variant', c.outline_variant);
-    root.setProperty('--primary', c.primary);
-    root.setProperty('--on-primary', c.on_primary);
-
-    // On a near-monochrome wallpaper, matugen's primary can collapse to an
-    // essentially colorless near-white -- indistinguishable from on-surface.
-    // Detect that directly (low R/G/B spread) rather than comparing to
-    // on-surface, and fall back to on-surface-variant, a real distinguishable
-    // grey, so the accent digits stay visible either way.
-    const accent = chroma(c.primary) < 20 ? c.on_surface_variant : c.primary;
-    root.setProperty('--accent', accent);
-  } catch (e) {
-    // colors.json missing/invalid: fall back to the defaults baked into newtab.css
-  }
 }
 
 let lastDate = null;
@@ -177,21 +57,52 @@ async function saveLinks(links) {
   await chrome.storage.local.set({ links });
 }
 
+// A link's `icon` is 'auto' (match by domain) or a library slug; `glyph` caches the resolved library entry so a new tab never
+// has to load the whole library.
+function resolveGlyph(link, lib) {
+  // 'site' was an option in 1.2.0; it now just means automatic.
+  const choice = !link.icon || link.icon === 'site' ? 'auto' : link.icon;
+  const slug = choice === 'auto' ? matchSlug(link.url, lib) : choice;
+  return (slug && lib.bySlug.get(slug)) || null;
+}
+
+async function ensureGlyphs(links) {
+  const stale = (l) => !('glyph' in l) || l.icon === 'site';
+  if (!links.some(stale)) return false;
+  const lib = await loadLibrary();
+  for (const l of links) {
+    if (!stale(l)) continue;
+    if (l.icon === 'site') l.icon = 'auto';
+    l.glyph = resolveGlyph(l, lib);
+  }
+  await saveLinks(links);
+  return true;
+}
+
+function iconStyle() {
+  return settings.iconStyle || DEFAULT_SETTINGS.iconStyle;
+}
+
 function makeDockItem(link, index) {
   const a = document.createElement('a');
-  a.className = 'dock-item';
+  a.className = 'dock-item icon-' + iconStyle();
   a.href = link.url;
   a.dataset.name = link.name;
 
-  const letter = document.createElement('div');
-  letter.className = 'letter';
-  letter.textContent = link.name.trim().charAt(0) || '?';
-  a.appendChild(letter);
+  const tile = document.createElement('div');
+  drawIcon(tile, link, iconStyle());
+  a.appendChild(tile);
 
-  const icon = document.createElement('img');
-  icon.alt = '';
-  a.appendChild(icon);
-  loadBestIcon(icon, letter, link.url);
+  const edit = document.createElement('button');
+  edit.className = 'edit';
+  edit.textContent = '✎';
+  edit.title = 'Edit';
+  edit.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openAddPanel(index);
+  });
+  a.appendChild(edit);
 
   const remove = document.createElement('button');
   remove.className = 'remove';
@@ -217,15 +128,59 @@ function makeAddItem() {
   plus.className = 'plus';
   plus.textContent = '+';
   div.appendChild(plus);
-  div.addEventListener('click', openAddPanel);
+  div.addEventListener('click', () => openAddPanel(-1));
   return div;
 }
 
-function openAddPanel() {
+// ---------------------------------------------------------------- add / edit
+
+let editIndex = -1;
+let draftIcon = 'auto';
+
+async function refreshAddPreview() {
+  const lib = await loadLibrary();
+  const draft = { name: addName.value || '?', url: normalizeUrl(addUrl.value || 'example.invalid'), icon: draftIcon };
+  draft.glyph = addUrl.value.trim() || draftIcon !== 'auto' ? resolveGlyph(draft, lib) : null;
+  addPreview.className = 'dock-item shortcut-preview icon-' + iconStyle();
+  addPreview.textContent = '';
+  const tile = document.createElement('div');
+  drawIcon(tile, draft, iconStyle());
+  addPreview.appendChild(tile);
+  addIconLabel.textContent = draftIcon !== 'auto' ? (draft.glyph ? draft.glyph[1] : 'Automatic')
+    : draft.glyph ? `Automatic: ${draft.glyph[1]}` : 'Automatic (no match yet, uses the site’s icon)';
+  document.getElementById('iconAuto').hidden = draftIcon === 'auto';
+}
+
+async function refreshIconResults() {
+  const lib = await loadLibrary();
+  const found = searchLibrary(lib, iconSearch.value);
+  iconResults.textContent = '';
+  for (const entry of found) {
+    const b = document.createElement('button');
+    b.className = 'icon-result icon-' + iconStyle() + (draftIcon === entry[0] ? ' on' : '');
+    b.title = entry[1];
+    const tile = document.createElement('div');
+    drawIcon(tile, { name: entry[1], url: 'https://example.invalid', glyph: entry }, iconStyle());
+    b.appendChild(tile);
+    b.addEventListener('click', () => { draftIcon = entry[0]; refreshAddPreview(); refreshIconResults(); });
+    iconResults.appendChild(b);
+  }
+  iconResults.hidden = !found.length;
+}
+
+async function openAddPanel(index) {
+  editIndex = index;
+  const link = index >= 0 ? (await getLinks())[index] : null;
+  addTitle.textContent = link ? 'Edit shortcut' : 'Add a shortcut';
+  document.getElementById('addSave').textContent = link ? 'Save' : 'Add';
+  addName.value = link ? link.name : '';
+  addUrl.value = link ? link.url : '';
+  draftIcon = link && link.icon && link.icon !== 'site' ? link.icon : 'auto';
+  iconSearch.value = '';
+  iconResults.hidden = true;
   addPanel.hidden = false;
-  addName.value = '';
-  addUrl.value = '';
   addName.focus();
+  refreshAddPreview();
 }
 
 function closeAddPanel() {
@@ -236,8 +191,12 @@ async function submitAdd() {
   const name = addName.value.trim();
   const url = addUrl.value.trim();
   if (!name || !url) return;
+  const lib = await loadLibrary();
   const links = await getLinks();
-  links.push({ name, url: normalizeUrl(url) });
+  const link = { name, url: normalizeUrl(url), icon: draftIcon };
+  link.glyph = resolveGlyph(link, lib);
+  if (editIndex >= 0) links[editIndex] = link;
+  else links.push(link);
   await saveLinks(links);
   closeAddPanel();
   render();
@@ -245,6 +204,7 @@ async function submitAdd() {
 
 async function render() {
   const links = await getLinks();
+  if (await ensureGlyphs(links)) return render();
   dock.innerHTML = '';
   links.forEach((link, i) => dock.appendChild(makeDockItem(link, i)));
   if (links.length) {
@@ -258,15 +218,285 @@ async function render() {
 document.getElementById('addCancel').addEventListener('click', closeAddPanel);
 document.getElementById('addSave').addEventListener('click', submitAdd);
 addPanel.addEventListener('click', (e) => { if (e.target === addPanel) closeAddPanel(); });
-[addName, addUrl].forEach((input) => {
+[addName, addUrl, iconSearch].forEach((input) => {
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') submitAdd();
+    if (e.key === 'Enter' && input !== iconSearch) submitAdd();
     if (e.key === 'Escape') closeAddPanel();
   });
 });
+let previewTimer = null;
+[addName, addUrl].forEach((input) => input.addEventListener('input', () => {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(refreshAddPreview, 250);
+}));
+iconSearch.addEventListener('input', refreshIconResults);
+document.getElementById('iconAuto').addEventListener('click', () => {
+  draftIcon = 'auto';
+  refreshAddPreview();
+  refreshIconResults();
+});
 
-applyColors();
-setInterval(applyColors, 1000);
 tickClock();
 setInterval(tickClock, 1000);
-render();
+
+// ---------------------------------------------------------------- colours
+
+const PRESETS = ['#ff00f2', '#d0bcff', '#74df00', '#00b7ff', '#ff6b3d', '#ffc400', '#00d1a0', '#ff3b6b', '#8c9eff', '#9e9e9e'];
+const $ = (id) => document.getElementById(id);
+const settingsEl = $('settings');
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+let settings = { ...DEFAULT_SETTINGS };
+let state = {};
+
+// Saved settings carry every field, including an icon style the user never
+// picked; only a style they chose themselves survives a change of default.
+function withDefaults(saved) {
+  const s = { ...DEFAULT_SETTINGS, ...(saved || {}) };
+  if (!s.iconStyleChosen || !ICON_STYLES.some((st) => st.id === s.iconStyle)) s.iconStyle = DEFAULT_SETTINGS.iconStyle;
+  return s;
+}
+
+async function saveSettings(patch) {
+  settings = { ...settings, ...patch };
+  await chrome.storage.local.set({ settings });
+}
+
+function applyPalette() {
+  const p = state.palette;
+  if (!p) return;
+  const dark = settings.mode === 'system' ? darkQuery.matches : settings.mode !== 'light';
+  const c = dark ? p.dark : p.light;
+  const root = document.documentElement.style;
+  for (const [k, v] of Object.entries(c)) {
+    if (typeof v === 'string' && v[0] === '#') root.setProperty('--' + k.replace(/_/g, '-'), v);
+  }
+  document.documentElement.dataset.scheme = dark ? 'dark' : 'light';
+  const icon = tabIcon(c.primary, c.on_primary);
+  document.getElementById('favicon').href = icon;
+  try {
+    localStorage.setItem('qt-palette', JSON.stringify(c));
+    localStorage.setItem('qt-favicon', icon);
+  } catch (e) { /* not critical */ }
+}
+
+// The tab's icon: the Quiet Tab moon, drawn in the current accent so it matches
+// the page and stays visible on light and dark tab strips alike.
+function tabIcon(bg, fg) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><mask id="m"><rect width="64" height="64" fill="#fff"/><circle cx="41" cy="22" r="17" fill="#000"/></mask><rect width="64" height="64" rx="16" fill="${bg}"/><circle cx="29" cy="35" r="21" fill="${fg}" mask="url(#m)"/><path d="M47 9l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="${fg}"/></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+function swatch(hex, active, onPick) {
+  const b = document.createElement('button');
+  b.className = 'swatch' + (active ? ' active' : '');
+  b.style.background = hex;
+  b.addEventListener('click', onPick);
+  return b;
+}
+
+// Draw a picture into a preview canvas; clicking it samples that spot.
+async function drawPreview(canvas, empty, src) {
+  canvas.hidden = !src;
+  empty.hidden = !!src;
+  if (!src || canvas.dataset.src === src) return;
+  canvas.dataset.src = src;
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  canvas.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
+}
+
+function pixelAt(canvas, e) {
+  const r = canvas.getBoundingClientRect();
+  const x = Math.floor(((e.clientX - r.left) / r.width) * canvas.width);
+  const y = Math.floor(((e.clientY - r.top) / r.height) * canvas.height);
+  // Average a small patch: single JPEG pixels are noisy.
+  const d = canvas.getContext('2d', { willReadFrequently: true })
+    .getImageData(Math.max(0, x - 1), Math.max(0, y - 1), 3, 3).data;
+  let rr = 0, gg = 0, bb = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) { rr += d[i]; gg += d[i + 1]; bb += d[i + 2]; n++; }
+  const hex = (v) => Math.round(v / n).toString(16).padStart(2, '0');
+  return '#' + hex(rr) + hex(gg) + hex(bb);
+}
+
+function renderSettings() {
+  document.querySelectorAll('#sourceSeg button').forEach((b) => b.classList.toggle('on', b.dataset.source === settings.source));
+  document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === settings.mode));
+  document.querySelectorAll('[data-pane]').forEach((s) => { s.hidden = s.dataset.pane !== settings.source; });
+  $('styleSelect').value = settings.style;
+  // matugen already chose the style; the picker only applies to the other sources.
+  $('styleField').hidden = settings.source === 'matugen';
+
+  const host = state.host || {};
+
+  // matugen pane
+  const mg = state.matugen;
+  const mgBox = $('mgSwatches');
+  mgBox.innerHTML = '';
+  if (mg && mg.dark) {
+    const when = new Date(Number(mg.stamp.split(':')[1] || 0) * 1000);
+    $('mgStatus').textContent = `Using the colours matugen made from your wallpaper${isNaN(when) ? '' : ' at ' + when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}. Change the wallpaper and this tab follows.`;
+    for (const k of ['primary', 'secondary', 'tertiary', 'surface', 'surface_variant', 'on_surface']) {
+      if (mg.dark[k]) { const s = swatch(mg.dark[k], false, () => {}); s.title = k.replace(/_/g, ' '); mgBox.appendChild(s); }
+    }
+  } else {
+    $('mgStatus').textContent = host.status === 'connected'
+      ? 'No matugen colours yet. Run ./install.sh (it adds the Quiet Tab template to matugen), then change your wallpaper once. Until then the tab uses your wallpaper.'
+      : 'The Linux helper isn’t running. Run ./install.sh from the Quiet Tab folder, then reopen this tab.';
+  }
+  $('mgStatus').classList.toggle('warn', !(mg && mg.dark));
+
+  // wallpaper pane
+  const wp = state.wallpaper;
+  drawPreview($('wpCanvas'), $('wpEmpty'), wp && wp.image);
+  const connected = host.status === 'connected';
+  $('wpStatus').textContent = connected
+    ? (wp ? `Following your wallpaper: ${wp.title}` : 'Connected, waiting for the wallpaper…')
+    : 'The Linux helper isn’t running, so the wallpaper can’t be read. Run ./install.sh from the Quiet Tab folder, then reopen this tab.';
+  $('wpStatus').classList.toggle('warn', !connected);
+  renderIconStyles();
+  const wpBox = $('wpSwatches');
+  wpBox.innerHTML = '';
+  const seeds = (wp && wp.seeds) || [];
+  const picked = settings.pick && wp && settings.pick.stamp === wp.stamp ? settings.pick.hex : null;
+  seeds.forEach((hex, i) => {
+    const active = picked ? picked === hex : i === 0;
+    wpBox.appendChild(swatch(hex, active, () => saveSettings({ pick: i === 0 ? null : { stamp: wp.stamp, hex } })));
+  });
+  if (picked && !seeds.includes(picked)) wpBox.appendChild(swatch(picked, true, () => {}));
+
+  // custom pane
+  $('customColor').value = settings.custom;
+  const pre = $('presetSwatches');
+  pre.innerHTML = '';
+  PRESETS.forEach((hex) => pre.appendChild(swatch(hex, hex === settings.custom.toLowerCase(), () => saveSettings({ custom: hex }))));
+
+  // image pane
+  drawPreview($('imgCanvas'), $('imgEmpty'), settings.image);
+  const imgBox = $('imgSwatches');
+  imgBox.innerHTML = '';
+  settings.imageSeeds.forEach((hex, i) => {
+    const active = settings.imagePick ? settings.imagePick === hex : i === 0;
+    imgBox.appendChild(swatch(hex, active, () => saveSettings({ imagePick: i === 0 ? null : hex })));
+  });
+  if (settings.imagePick && !settings.imageSeeds.includes(settings.imagePick)) {
+    imgBox.appendChild(swatch(settings.imagePick, true, () => {}));
+  }
+}
+
+// Six sample shortcuts for the style previews when the dock is still empty.
+const SAMPLE_LINKS = ['github.com', 'youtube.com', 'spotify.com', 'web.whatsapp.com', 'reddit.com', 'netflix.com']
+  .map((d) => ({ name: d, url: 'https://' + d, icon: 'auto' }));
+let iconStylesKey = null;
+
+async function renderIconStyles() {
+  const links = (await getLinks()).slice(0, 6);
+  const key = JSON.stringify([settings.iconStyle, links.map((l) => [l.url, l.glyph && l.glyph[0]])]);
+  if (key === iconStylesKey) return;
+  iconStylesKey = key;
+  let preview = links;
+  if (!preview.length) {
+    const lib = await loadLibrary();
+    preview = SAMPLE_LINKS.map((l) => ({ ...l, glyph: lib.bySlug.get(matchSlug(l.url, lib)) || null }));
+  }
+  const box = $('iconStyles');
+  box.textContent = '';
+  for (const style of ICON_STYLES) {
+    const opt = document.createElement('button');
+    opt.className = 'icon-style' + (style.id === settings.iconStyle ? ' on' : '');
+    const head = document.createElement('div');
+    head.className = 'icon-style-head';
+    head.innerHTML = '<b></b><span></span>';
+    head.querySelector('b').textContent = style.label;
+    head.querySelector('span').textContent = style.hint;
+    const row = document.createElement('div');
+    row.className = 'mini-dock';
+    for (const link of preview) {
+      const item = document.createElement('div');
+      item.className = 'dock-item mini icon-' + style.id;
+      const tile = document.createElement('div');
+      drawIcon(tile, link, style.id);
+      item.appendChild(tile);
+      row.appendChild(item);
+    }
+    opt.append(head, row);
+    opt.addEventListener('click', () => saveSettings({ iconStyle: style.id, iconStyleChosen: true }));
+    box.appendChild(opt);
+  }
+}
+
+async function loadImageFile(file) {
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+  await img.decode();
+  const scale = Math.min(1, 480 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * scale);
+  c.height = Math.round(img.naturalHeight * scale);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  URL.revokeObjectURL(img.src);
+  const dataUrl = c.toDataURL('image/jpeg', 0.88);
+  const imageSeeds = await extractSeeds(dataUrl);
+  await saveSettings({ source: 'image', image: dataUrl, imageSeeds, imagePick: null });
+}
+
+function setupSettings() {
+  const sel = $('styleSelect');
+  for (const [key, def] of Object.entries(STYLES)) sel.add(new Option(def.label, key));
+  sel.addEventListener('change', () => saveSettings({ style: sel.value }));
+
+  $('gear').addEventListener('click', () => {
+    settingsEl.hidden = !settingsEl.hidden;
+    if (!settingsEl.hidden) chrome.runtime.sendMessage({ type: 'reconnect' });
+  });
+  $('settingsClose').addEventListener('click', () => { settingsEl.hidden = true; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && addPanel.hidden) settingsEl.hidden = true; });
+
+  document.querySelectorAll('#sourceSeg button').forEach((b) => b.addEventListener('click', () => saveSettings({ source: b.dataset.source })));
+  document.querySelectorAll('#modeSeg button').forEach((b) => b.addEventListener('click', () => saveSettings({ mode: b.dataset.mode })));
+
+  $('wpCanvas').addEventListener('click', (e) => {
+    if (state.wallpaper) saveSettings({ pick: { stamp: state.wallpaper.stamp, hex: pixelAt($('wpCanvas'), e) } });
+  });
+  $('imgCanvas').addEventListener('click', (e) => saveSettings({ imagePick: pixelAt($('imgCanvas'), e) }));
+  $('imgFile').addEventListener('change', () => { if ($('imgFile').files[0]) loadImageFile($('imgFile').files[0]); });
+
+  $('customColor').addEventListener('input', () => saveSettings({ custom: $('customColor').value }));
+  const eyedrop = $('eyedrop');
+  if (!('EyeDropper' in window)) eyedrop.hidden = true;
+  eyedrop.addEventListener('click', async () => {
+    try {
+      const { sRGBHex } = await new EyeDropper().open();
+      saveSettings({ custom: sRGBHex.toLowerCase() });
+    } catch (e) { /* cancelled */ }
+  });
+
+
+  $('openAppearance').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://settings/appearance' }));
+
+  darkQuery.addEventListener('change', applyPalette);
+}
+
+async function loadState() {
+  const got = await chrome.storage.local.get(['settings', 'palette', 'wallpaper', 'matugen', 'host']);
+  settings = withDefaults(got.settings);
+  state = got;
+  applyPalette();
+  renderSettings();
+  render();
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  for (const k of ['palette', 'wallpaper', 'matugen', 'host']) if (changes[k]) state[k] = changes[k].newValue;
+  if (changes.settings) settings = withDefaults(changes.settings.newValue);
+  if (changes.palette || changes.settings) applyPalette();
+  const oldStyle = changes.settings && changes.settings.oldValue && changes.settings.oldValue.iconStyle;
+  if (changes.links || (changes.settings && oldStyle !== settings.iconStyle)) render();
+  renderSettings();
+});
+
+setupSettings();
+loadState();

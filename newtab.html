@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-scheme="dark">
 <head>
 <meta charset="UTF-8">
 <title>New Tab</title>
+<link rel="icon" id="favicon" href="icons/icon32.png">
+<script src="boot.js"></script>
 <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
@@ -17,12 +19,105 @@
     </div>
   </main>
 
+  <button class="gear" id="gear" title="Colours" aria-label="Colour settings">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 0 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01a1.5 1.5 0 0 1 1.12-2.49H16a5 5 0 0 0 5-5C21 6.58 16.97 3 12 3Zm-5.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>
+  </button>
+
+  <aside class="settings" id="settings" hidden>
+    <header class="settings-head">
+      <h2>Colours</h2>
+      <button class="close" id="settingsClose" aria-label="Close">×</button>
+    </header>
+
+    <div class="seg" id="sourceSeg" role="tablist">
+      <button data-source="matugen">Matugen</button>
+      <button data-source="wallpaper">Wallpaper</button>
+      <button data-source="custom">Custom</button>
+      <button data-source="image">Image</button>
+    </div>
+
+    <section data-pane="matugen">
+      <p class="hint" id="mgStatus"></p>
+      <div class="label">matugen's colours <span class="sub">(the same ones your bar and terminal use)</span></div>
+      <div class="swatches" id="mgSwatches"></div>
+    </section>
+
+    <section data-pane="wallpaper">
+      <div class="preview" id="wpPreviewWrap">
+        <canvas id="wpCanvas"></canvas>
+        <div class="preview-empty" id="wpEmpty">No wallpaper yet</div>
+      </div>
+      <p class="hint" id="wpStatus"></p>
+      <div class="label">From your wallpaper <span class="sub">(or click the picture to pick any spot)</span></div>
+      <div class="swatches" id="wpSwatches"></div>
+    </section>
+
+    <section data-pane="custom">
+      <div class="custom-row">
+        <input type="color" id="customColor">
+        <button class="btn" id="eyedrop" title="Pick a colour from anywhere on screen">Pick from screen</button>
+      </div>
+      <div class="label">Presets</div>
+      <div class="swatches" id="presetSwatches"></div>
+    </section>
+
+    <section data-pane="image">
+      <div class="preview" id="imgPreviewWrap">
+        <canvas id="imgCanvas"></canvas>
+        <div class="preview-empty" id="imgEmpty">Choose a picture</div>
+      </div>
+      <label class="btn file-btn">Choose picture…<input type="file" id="imgFile" accept="image/*" hidden></label>
+      <div class="label">From this picture <span class="sub">(or click it to pick any spot)</span></div>
+      <div class="swatches" id="imgSwatches"></div>
+    </section>
+
+    <div class="field" id="styleField">
+      <label for="styleSelect" class="label">Style</label>
+      <select id="styleSelect"></select>
+    </div>
+
+    <div class="field">
+      <span class="label">Mode</span>
+      <div class="seg small" id="modeSeg">
+        <button data-mode="dark">Dark</button>
+        <button data-mode="light">Light</button>
+        <button data-mode="system">System</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">Icon style</span>
+      <div class="icon-styles" id="iconStyles"></div>
+    </div>
+
+    <div class="field browser-theme">
+      <span class="label">Your browser's colours</span>
+      <p class="hint">Your browser keeps its own theme. To match it, pick one of its colours under Settings → Appearance.</p>
+      <button class="btn" id="openAppearance">Open appearance settings</button>
+    </div>
+  </aside>
+
   <div class="dock" id="dock"></div>
 
   <div class="add-panel" id="addPanel" hidden>
     <div class="add-card">
+      <h2 id="addTitle">Add a shortcut</h2>
       <input id="addName" type="text" placeholder="Name" autocomplete="off" maxlength="24">
-      <input id="addUrl" type="text" placeholder="URL" autocomplete="off">
+      <input id="addUrl" type="text" placeholder="Address, e.g. github.com" autocomplete="off">
+
+      <div class="icon-pick">
+        <div class="icon-pick-head">
+          <div class="dock-item shortcut-preview" id="addPreview"></div>
+          <div class="icon-pick-text">
+            <div class="label">Icon</div>
+            <div class="hint" id="addIconLabel">Automatic</div>
+          </div>
+          <button class="btn" id="iconAuto" hidden>Back to automatic</button>
+        </div>
+        <input id="iconSearch" type="text" placeholder="Search 3,400+ icons to pick a different one…" autocomplete="off">
+        <div class="icon-results" id="iconResults" hidden></div>
+      </div>
+
       <div class="add-actions">
         <button id="addCancel">Cancel</button>
         <button id="addSave">Add</button>
@@ -30,6 +125,6 @@
     </div>
   </div>
 
-  <script src="newtab.js"></script>
+  <script type="module" src="newtab.js"></script>
 </body>
 </html>
