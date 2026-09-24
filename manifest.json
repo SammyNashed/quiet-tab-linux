@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Quiet Tab",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A minimal, curated New Tab page that follows your Linux wallpaper and matugen colours, or any colour you pick.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
